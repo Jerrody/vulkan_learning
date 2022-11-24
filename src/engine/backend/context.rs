@@ -10,8 +10,6 @@ pub use std::mem::ManuallyDrop;
 pub use std::os::raw::c_char;
 pub use tracing_unwrap::ResultExt;
 
-#[cfg(feature = "validation")]
-pub use self::debug::DebugHandle;
 use self::device::DeviceHandle;
 use self::surface::SurfaceHandle;
 use self::swapchain::SwapchainHandle;
@@ -20,7 +18,7 @@ pub struct Context {
     entry: ManuallyDrop<ash::Entry>,
     instance: ash::Instance,
     #[cfg(feature = "validation")]
-    debug_messenger: debug::DebugHandle,
+    debug_handle: debug::DebugHandle,
     surface_handle: SurfaceHandle,
     swapchain_handle: SwapchainHandle,
 }
@@ -62,33 +60,8 @@ impl Context {
 
         let instance = unsafe { entry.create_instance(&instance_info, None).unwrap_or_log() };
 
-        // TODO: Maybe move it to the `validation` module?
         #[cfg(feature = "validation")]
-        let (debug_loader, debug_utils) = {
-            let debug_loader = ash::extensions::ext::DebugUtils::new(&entry, &instance);
-
-            let debug_utils_info = vk::DebugUtilsMessengerCreateInfoEXT::default()
-                .message_severity(
-                    vk::DebugUtilsMessageSeverityFlagsEXT::ERROR
-                        | vk::DebugUtilsMessageSeverityFlagsEXT::WARNING
-                        | vk::DebugUtilsMessageSeverityFlagsEXT::INFO,
-                )
-                .message_type(
-                    vk::DebugUtilsMessageTypeFlagsEXT::GENERAL
-                        | vk::DebugUtilsMessageTypeFlagsEXT::PERFORMANCE
-                        | vk::DebugUtilsMessageTypeFlagsEXT::VALIDATION,
-                )
-                .pfn_user_callback(Some(debug::debug_callback));
-
-            let debug_utils = unsafe {
-                debug_loader
-                    .create_debug_utils_messenger(&debug_utils_info, None)
-                    .unwrap_or_log()
-            };
-
-            (debug_loader, debug_utils)
-        };
-
+        let debug_handle = debug::DebugHandle::new(&entry, &instance).unwrap_or_log();
         let surface_handle = SurfaceHandle::new(&entry, &instance, window).unwrap_or_log();
         let device_handle = DeviceHandle::new(&instance, &surface_handle).unwrap_or_log();
         let swapchain_handle =
@@ -99,7 +72,7 @@ impl Context {
             entry: ManuallyDrop::new(entry),
             instance,
             #[cfg(feature = "validation")]
-            debug_messenger: debug::DebugHandle::new(debug_loader, debug_utils),
+            debug_handle,
             surface_handle,
             swapchain_handle,
         }
@@ -110,12 +83,6 @@ impl Drop for Context {
     fn drop(&mut self) {
         unsafe {
             self.instance.destroy_instance(None);
-
-            #[cfg(feature = "validation")]
-            self.debug_messenger
-                .debug_loader
-                .destroy_debug_utils_messenger(self.debug_messenger.debug_utils, None);
-
             ManuallyDrop::drop(&mut self.entry);
         }
     }
