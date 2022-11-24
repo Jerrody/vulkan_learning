@@ -8,7 +8,7 @@ pub struct Engine {
 }
 
 impl Engine {
-    fn new(window: &winit::window::Window) -> Self {
+    pub fn new(window: &winit::window::Window) -> Self {
         let context = Context::new(window);
 
         Self { context }

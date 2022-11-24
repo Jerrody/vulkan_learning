@@ -1,3 +1,5 @@
+#![feature(panic_info_message)]
+
 mod engine;
 mod logging;
 
@@ -17,6 +19,8 @@ fn main() {
         .unwrap();
 
     let _log_guard = logging::init_logging();
+
+    let _engine = engine::Engine::new(&window);
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { window_id, event } if window_id == window.id() => match event {

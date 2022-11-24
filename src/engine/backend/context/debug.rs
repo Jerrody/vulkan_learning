@@ -3,9 +3,27 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use tracing::{error, info, warn};
 
-use super::cstring::cstr;
+use crate::engine::utils::cstring::cstr;
 
 pub const VALIDATION_LAYER_EXTENSION_NAME: *const c_char = cstr!("VK_LAYER_KHRONOS_validation");
+
+pub struct DebugHandle {
+    pub debug_loader: ash::extensions::ext::DebugUtils,
+    pub debug_utils: vk::DebugUtilsMessengerEXT,
+}
+
+impl DebugHandle {
+    #[inline(always)]
+    pub fn new(
+        debug_loader: ash::extensions::ext::DebugUtils,
+        debug_utils: vk::DebugUtilsMessengerEXT,
+    ) -> Self {
+        Self {
+            debug_loader,
+            debug_utils,
+        }
+    }
+}
 
 pub unsafe extern "system" fn debug_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
