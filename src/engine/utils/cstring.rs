@@ -1,5 +1,8 @@
-use std::ffi::CStr;
-
-pub const unsafe fn cstr(str: &str) -> &CStr {
-    CStr::from_bytes_with_nul_unchecked(str.as_bytes())
+#[macro_export]
+macro_rules! cstr {
+    ($s:expr) => {
+        unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(concat!($s, "\0").as_bytes()) }
+    };
 }
+
+pub(crate) use cstr;

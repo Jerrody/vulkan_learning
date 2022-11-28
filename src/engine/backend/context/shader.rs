@@ -5,7 +5,7 @@ use tracing_unwrap::{OptionExt, ResultExt};
 use track::Context;
 use walkdir::WalkDir;
 
-const SHADER_ENTRY_NAME: &CStr = unsafe { cstr("main\0") };
+const SHADER_ENTRY_NAME: &CStr = cstr!("main");
 
 pub struct ShaderHandle;
 

@@ -4,7 +4,6 @@ mod shader;
 mod surface;
 mod swapchain;
 
-pub use crate::engine::utils::cstring::*;
 pub use ash::vk;
 use raw_window_handle::HasRawDisplayHandle;
 use std::ffi::CStr;
@@ -29,9 +28,9 @@ pub struct Context {
 
 // TODO Return an error and process an error in the place of creation of instance.
 impl Context {
-    const ENGINE_NAME: &CStr = unsafe { cstr("NoEngine\0") };
+    const ENGINE_NAME: &CStr = cstr!("NoEngine");
     const ENGINE_VERSION: u32 = vk::make_api_version(0, 0, 1, 0);
-    const APPLICATION_NAME: &CStr = unsafe { cstr("Triangle\0") };
+    const APPLICATION_NAME: &CStr = cstr!("Triangle");
     const APPLICATION_VERSION: u32 = vk::make_api_version(0, 1, 0, 0);
 
     pub fn new(window: &winit::window::Window) -> track::Result<Self> {

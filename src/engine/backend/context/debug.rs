@@ -5,7 +5,7 @@ use track::Context;
 
 use crate::engine::utils::cstring::cstr;
 
-pub const VALIDATION_LAYER_EXTENSION_NAME: &CStr = unsafe { cstr("VK_LAYER_KHRONOS_validation\0") };
+pub const VALIDATION_LAYER_EXTENSION_NAME: &CStr = cstr!("VK_LAYER_KHRONOS_validation");
 
 pub unsafe extern "system" fn debug_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
