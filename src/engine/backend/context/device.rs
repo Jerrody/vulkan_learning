@@ -115,15 +115,20 @@ impl DeviceHandle {
         let device_extension_names = [ash::extensions::khr::Swapchain::name().as_ptr()];
         let device_layer_names = [
             #[cfg(feature = "validation")]
-            debug::VALIDATION_LAYER_EXTENSION_NAME,
+            debug::VALIDATION_LAYER_EXTENSION_NAME.as_ptr(),
         ];
         let mut device_features3 = vk::PhysicalDeviceVulkan13Features::default()
             .dynamic_rendering(true)
             .synchronization2(true);
 
+        let queue_create_info = [vk::DeviceQueueCreateInfo::default()
+            .queue_family_index(queue_family_index)
+            .queue_priorities(&[1.0])];
+
         let device_info = vk::DeviceCreateInfo::default()
             .enabled_extension_names(&device_extension_names)
             .enabled_layer_names(&device_layer_names)
+            .queue_create_infos(&queue_create_info)
             .push_next(&mut device_features3);
         let device = unsafe {
             instance

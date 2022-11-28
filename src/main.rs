@@ -1,8 +1,10 @@
 #![feature(panic_info_message)]
+#![feature(const_cstr_methods)]
 
 mod engine;
 mod logging;
 
+use tracing_unwrap::ResultExt;
 use winit::{
     event::{self, Event, WindowEvent},
     platform::windows::WindowBuilderExtWindows,
@@ -20,7 +22,7 @@ fn main() {
 
     let _log_guard = logging::init_logging();
 
-    let _engine = engine::Engine::new(&window);
+    let _engine = engine::Engine::new(&window).unwrap_or_log();
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { window_id, event } if window_id == window.id() => match event {

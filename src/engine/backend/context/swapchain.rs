@@ -88,6 +88,7 @@ impl SwapchainHandle {
             .present_mode(device_handle.present_mode)
             .min_image_count(min_image_count)
             .image_array_layers(1)
+            .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
             .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
             .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
             .image_extent(image_extent)
@@ -126,6 +127,7 @@ impl SwapchainHandle {
                     .format(device_handle.surface_format.format)
                     .view_type(vk::ImageViewType::TYPE_2D)
                     .subresource_range(vk::ImageSubresourceRange {
+                        aspect_mask: vk::ImageAspectFlags::COLOR,
                         level_count: 1,
                         layer_count: 1,
                         ..Default::default()

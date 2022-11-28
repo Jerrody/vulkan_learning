@@ -1,12 +1,11 @@
 use ash::vk;
 use std::ffi::CStr;
-use std::os::raw::c_char;
 use tracing::{error, info, warn};
 use track::Context;
 
 use crate::engine::utils::cstring::cstr;
 
-pub const VALIDATION_LAYER_EXTENSION_NAME: *const c_char = cstr!("VK_LAYER_KHRONOS_validation");
+pub const VALIDATION_LAYER_EXTENSION_NAME: &CStr = unsafe { cstr("VK_LAYER_KHRONOS_validation\0") };
 
 pub unsafe extern "system" fn debug_callback(
     message_severity: vk::DebugUtilsMessageSeverityFlagsEXT,
