@@ -4,12 +4,14 @@
 mod engine;
 mod logging;
 
-use tracing_unwrap::ResultExt;
+use mimalloc::MiMalloc;
 use winit::{
     event::{self, Event, WindowEvent},
     platform::windows::WindowBuilderExtWindows,
 };
 
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 fn main() {
     let event_loop = winit::event_loop::EventLoop::new();
     let window = winit::window::WindowBuilder::new()
@@ -22,7 +24,7 @@ fn main() {
 
     let _log_guard = logging::init_logging();
 
-    let _engine = engine::Engine::new(&window).unwrap_or_log();
+    let engine = engine::Engine::new(&window).unwrap();
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent { window_id, event } if window_id == window.id() => match event {
@@ -38,7 +40,7 @@ fn main() {
             } => control_flow.set_exit(),
             _ => (),
         },
-        Event::MainEventsCleared => window.request_redraw(),
+        Event::MainEventsCleared => engine.draw().unwrap(),
         _ => (),
     });
 }

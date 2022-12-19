@@ -1,16 +1,16 @@
-use super::{device::DeviceHandle, surface::SurfaceHandle};
+use super::surface::SurfaceHandle;
 use ash::{extensions::khr, vk};
 use smallvec::{SmallVec, ToSmallVec};
-use tracing_unwrap::ResultExt;
 use track::Context;
 
-type Images = (SmallVec<[vk::Image; 4]>, SmallVec<[vk::ImageView; 4]>);
+type Images = (SmallVec<[vk::Image; 3]>, SmallVec<[vk::ImageView; 3]>);
 
 pub struct SwapchainHandle {
-    swapchain_loader: khr::Swapchain,
-    swapchain: vk::SwapchainKHR,
-    images: SmallVec<[vk::Image; 4]>,
-    image_views: SmallVec<[vk::ImageView; 4]>,
+    pub swapchain_loader: khr::Swapchain,
+    pub swapchain: vk::SwapchainKHR,
+    pub images: SmallVec<[vk::Image; 3]>,
+    pub image_views: SmallVec<[vk::ImageView; 3]>,
+    pub image_extent: vk::Extent2D,
 }
 
 impl SwapchainHandle {
@@ -26,34 +26,67 @@ impl SwapchainHandle {
 
         let (swapchain_loader, swapchain) = Self::create_swapchain(
             instance,
-            device_handle,
+            &device_handle.device,
+            device_handle.surface_format,
+            device_handle.present_mode,
+            device_handle.surface_capabilities,
             surface_handle,
             min_image_count,
             image_extent,
         )
         .track()?;
 
-        let (images, image_views) =
-            Self::create_images(device_handle, &swapchain_loader, swapchain).track()?;
+        let (images, image_views) = Self::create_images(
+            &device_handle.device,
+            device_handle.surface_format.format,
+            &swapchain_loader,
+            swapchain,
+        )
+        .track()?;
 
         Ok(Self {
             swapchain_loader,
             swapchain,
             images,
             image_views,
+            image_extent,
         })
     }
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    fn create_swapchain(
+        instance: &ash::Instance,
+        device: &ash::Device,
+        surface_format: vk::SurfaceFormatKHR,
+        present_mode: vk::PresentModeKHR,
+        surface_capabilities: vk::SurfaceCapabilitiesKHR,
+        surface_handle: &SurfaceHandle,
+        min_image_count: u32,
+        image_extent: vk::Extent2D,
+    ) -> track::Result<(khr::Swapchain, vk::SwapchainKHR)> {
+        let swapchain_info = vk::SwapchainCreateInfoKHR::default()
+            .surface(surface_handle.surface)
+            .image_format(surface_format.format)
+            .image_color_space(surface_format.color_space)
+            .present_mode(present_mode)
+            .min_image_count(min_image_count)
+            .image_array_layers(1)
+            .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
+            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .image_extent(image_extent)
+            .pre_transform(surface_capabilities.current_transform)
+            .clipped(true);
 
-    #[inline(always)]
-    fn choose_min_image_count(surface_capabilities: vk::SurfaceCapabilitiesKHR) -> u32 {
-        let max_image_count = surface_capabilities.max_image_count;
+        let swapchain_loader = ash::extensions::khr::Swapchain::new(instance, device);
 
-        let mut min_image_count = surface_capabilities.min_image_count + 1;
-        if min_image_count > 0 && min_image_count > max_image_count {
-            min_image_count = max_image_count;
-        }
+        let swapchain = unsafe {
+            swapchain_loader
+                .create_swapchain(&swapchain_info, None)
+                .track()?
+        };
 
-        min_image_count
+        Ok((swapchain_loader, swapchain))
     }
 
     #[inline(always)]
@@ -73,46 +106,25 @@ impl SwapchainHandle {
         }
     }
 
-    #[inline]
-    fn create_swapchain(
-        instance: &ash::Instance,
-        device_handle: &DeviceHandle,
-        surface_handle: &SurfaceHandle,
-        min_image_count: u32,
-        image_extent: vk::Extent2D,
-    ) -> track::Result<(khr::Swapchain, vk::SwapchainKHR)> {
-        let swapchain_info = vk::SwapchainCreateInfoKHR::default()
-            .surface(surface_handle.surface)
-            .image_format(device_handle.surface_format.format)
-            .image_color_space(device_handle.surface_format.color_space)
-            .present_mode(device_handle.present_mode)
-            .min_image_count(min_image_count)
-            .image_array_layers(1)
-            .composite_alpha(vk::CompositeAlphaFlagsKHR::OPAQUE)
-            .image_usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
-            .image_sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .image_extent(image_extent)
-            .pre_transform(device_handle.surface_capabilities.current_transform)
-            .clipped(true);
+    #[inline(always)]
+    fn choose_min_image_count(surface_capabilities: vk::SurfaceCapabilitiesKHR) -> u32 {
+        let max_image_count = surface_capabilities.max_image_count;
 
-        let swapchain_loader =
-            ash::extensions::khr::Swapchain::new(instance, &device_handle.device);
+        let mut min_image_count = surface_capabilities.min_image_count + 1;
+        if min_image_count > 0 && min_image_count > max_image_count {
+            min_image_count = max_image_count;
+        }
 
-        let swapchain = unsafe {
-            swapchain_loader
-                .create_swapchain(&swapchain_info, None)
-                .track()?
-        };
-
-        Ok((swapchain_loader, swapchain))
+        min_image_count
     }
 
     fn create_images(
-        device_handle: &DeviceHandle,
+        device: &ash::Device,
+        format: vk::Format,
         swapchain_loader: &khr::Swapchain,
         swapchain: vk::SwapchainKHR,
     ) -> track::Result<Images> {
-        let images: SmallVec<[vk::Image; 4]> = unsafe {
+        let images = unsafe {
             swapchain_loader
                 .get_swapchain_images(swapchain)
                 .track()?
@@ -124,7 +136,7 @@ impl SwapchainHandle {
             .map(|&image| {
                 let image_view_info = vk::ImageViewCreateInfo::default()
                     .image(image)
-                    .format(device_handle.surface_format.format)
+                    .format(format)
                     .view_type(vk::ImageViewType::TYPE_2D)
                     .subresource_range(vk::ImageSubresourceRange {
                         aspect_mask: vk::ImageAspectFlags::COLOR,
@@ -133,14 +145,9 @@ impl SwapchainHandle {
                         ..Default::default()
                     });
 
-                unsafe {
-                    device_handle
-                        .device
-                        .create_image_view(&image_view_info, None)
-                        .unwrap_or_log()
-                }
+                unsafe { device.create_image_view(&image_view_info, None).unwrap() }
             })
-            .collect::<SmallVec<[vk::ImageView; 4]>>();
+            .collect();
 
         Ok((images, image_views))
     }

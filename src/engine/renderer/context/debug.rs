@@ -31,13 +31,15 @@ pub unsafe extern "system" fn debug_callback(
 }
 
 pub struct DebugHandle {
-    debug_loader: ash::extensions::ext::DebugUtils,
+    pub debug_loader: ash::extensions::ext::DebugUtils,
     pub debug_utils: vk::DebugUtilsMessengerEXT,
 }
 
 impl DebugHandle {
     #[inline(always)]
     pub fn new(entry: &ash::Entry, instance: &ash::Instance) -> track::Result<Self> {
+        info!("Validation Enabled. Vulkan will report Validation Info");
+
         let (debug_loader, debug_utils) = {
             let debug_loader = ash::extensions::ext::DebugUtils::new(entry, instance);
 
@@ -67,14 +69,5 @@ impl DebugHandle {
             debug_loader,
             debug_utils,
         })
-    }
-}
-
-impl Drop for DebugHandle {
-    fn drop(&mut self) {
-        unsafe {
-            self.debug_loader
-                .destroy_debug_utils_messenger(self.debug_utils, None);
-        }
     }
 }

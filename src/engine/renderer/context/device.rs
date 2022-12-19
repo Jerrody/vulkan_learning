@@ -3,10 +3,10 @@ use tracing::info;
 use tracing_unwrap::ResultExt;
 use track::Context;
 
-use crate::engine::backend::context::debug;
+use crate::engine::renderer::context::debug;
 
 pub struct DeviceHandle {
-    _physical_device: vk::PhysicalDevice,
+    pub physical_device: vk::PhysicalDevice,
     pub device: ash::Device,
     pub device_properties: vk::PhysicalDeviceProperties,
     pub queue_family_index: u32,
@@ -21,6 +21,8 @@ impl DeviceHandle {
         instance: &ash::Instance,
         surface_handle: &super::surface::SurfaceHandle,
     ) -> track::Result<Self> {
+        info!("Choosing compitable GPU");
+
         let (physical_device, device_properties, queue_family_index, surface_format, present_mode) = unsafe {
             instance
                 .enumerate_physical_devices()
@@ -103,7 +105,7 @@ impl DeviceHandle {
                 .unwrap_or_log()
                 .to_string()
         };
-        info!("Found compitable device: {device_name}");
+        info!("Found compitable GPU: {device_name}");
 
         let surface_capabilities = unsafe {
             surface_handle
@@ -139,7 +141,7 @@ impl DeviceHandle {
         let queue_graphics = unsafe { device.get_device_queue(queue_family_index, 0) };
 
         Ok(Self {
-            _physical_device: physical_device,
+            physical_device,
             device,
             device_properties,
             queue_family_index,
@@ -148,13 +150,5 @@ impl DeviceHandle {
             surface_format,
             present_mode,
         })
-    }
-}
-
-impl Drop for DeviceHandle {
-    fn drop(&mut self) {
-        unsafe {
-            self.device.destroy_device(None);
-        }
     }
 }

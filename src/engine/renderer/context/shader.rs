@@ -1,19 +1,20 @@
 use crate::engine::utils::cstring::cstr;
 use ash::vk;
+use smallvec::SmallVec;
 use std::{ffi::CStr, path::Path};
-use tracing_unwrap::{OptionExt, ResultExt};
+use tracing_unwrap::OptionExt;
 use track::Context;
 use walkdir::WalkDir;
 
-const SHADER_ENTRY_NAME: &CStr = cstr!("main");
+pub const SHADER_ENTRY_NAME: &CStr = cstr!("main");
 
-pub struct ShaderHandle;
+pub struct ShaderHandle {
+    pub shader_modules: SmallVec<[(vk::ShaderModule, vk::ShaderStageFlags); 2]>,
+}
 
 impl ShaderHandle {
-    pub fn create_shader_modules(
-        device: &ash::Device,
-    ) -> Vec<(vk::ShaderModule, vk::ShaderStageFlags)> {
-        WalkDir::new(r"src\engine\backend\shaders")
+    pub fn new(device: &ash::Device) -> Self {
+        let shader_modules = WalkDir::new(r"src\engine\renderer\shaders\spv")
             .into_iter()
             .filter_map(|entry| {
                 entry
@@ -29,6 +30,8 @@ impl ShaderHandle {
                     .split('.')
                     .collect();
 
+                print!("TEST");
+
                 let shader_stage_flags = match filename_parts.as_slice() {
                     [_, "vert", _] => vk::ShaderStageFlags::VERTEX,
                     [_, "frag", _] => vk::ShaderStageFlags::FRAGMENT,
@@ -42,11 +45,18 @@ impl ShaderHandle {
                 };
 
                 (
-                    Self::create_shader_module(device, &path).unwrap_or_log(),
+                    Self::create_shader_module(device, &path).unwrap(),
                     shader_stage_flags,
                 )
             })
-            .collect()
+            .collect::<SmallVec<[(vk::ShaderModule, vk::ShaderStageFlags); 2]>>();
+
+        assert!(
+            !shader_modules.is_empty(),
+            "Found no shaders in the specified path"
+        );
+
+        Self { shader_modules }
     }
 
     fn create_shader_module(device: &ash::Device, path: &Path) -> track::Result<vk::ShaderModule> {

@@ -32,11 +32,3 @@ impl SurfaceHandle {
         })
     }
 }
-
-impl Drop for SurfaceHandle {
-    fn drop(&mut self) {
-        unsafe {
-            self.surface_loader.destroy_surface(self.surface, None);
-        }
-    }
-}
